@@ -1,547 +1,186 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyBot — The Next-Gen AI Study Companion</title>
-    <!-- Tailwind CSS v4 -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>StudyBot - Parent & Control Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.disconnect {
+            background-color: #f44336;
+        }
+        button.disconnect:hover {
+            background-color: #d32f2f;
+        }
+        .hidden {
+            display: none;
+        }
+        .status-box {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .status-disconnected { color: #f44336; }
+        .status-connected { color: #4CAF50; }
+        input, select {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+<body>
 
-    <!-- ================= GLOBAL HEADER & NAVIGATION ================= -->
-    <header class="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <!-- Brand Logo -->
-            <a href="#home" onclick="showPage('home')" class="flex items-center space-x-3 group">
-                <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition">
-                    <i class="fa-solid fa-robot text-xl"></i>
-                </div>
-                <div>
-                    <span class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">StudyBot</span>
-                    <span class="block text-[10px] text-indigo-400 font-medium uppercase tracking-widest">Ecosystem Hub</span>
-                </div>
-            </a>
+    <!-- SECTION 1: BLUETOOTH CONNECTION GATEWAY -->
+    <div class="card" id="auth-card">
+        <h2>StudyBot Security Gate</h2>
+        <p>You must connect to StudyBot via Bluetooth to unlock the Parent Dashboard.</p>
+        <button id="connect-btn" onclick="connectBluetooth()">Connect via Bluetooth</button>
+        <p class="status-box status-disconnected" id="ble-status">Status: Disconnected</p>
+    </div>
 
-            <!-- Navigation Links -->
-            <nav class="hidden md:flex items-center space-x-1 bg-slate-900/80 border border-slate-800/80 px-3 py-1.5 rounded-full shadow-inner">
-                <button onclick="showPage('home')" id="nav-btn-home" class="px-4 py-2 rounded-full text-xs font-semibold transition-all bg-indigo-600 text-white shadow">Home</button>
-                <button onclick="showPage('connection')" id="nav-btn-connection" class="px-4 py-2 rounded-full text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800">Bot Connection</button>
-                <button onclick="showPage('transcript')" id="nav-btn-transcript" class="px-4 py-2 rounded-full text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800">Transcripts & Chat</button>
-                <button onclick="showPage('parent')" id="nav-btn-parent" class="px-4 py-2 rounded-full text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800">Parent Dashboard</button>
-            </nav>
+    <!-- SECTION 2: PARENT'S DASHBOARD (LOCKED BY DEFAULT) -->
+    <div class="card hidden" id="dashboard-card">
+        <h2>StudyBot Parent's Dashboard</h2>
+        <p class="status-box status-connected">Access Granted: Device Linked Successfully!</p>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        
+        <h3>Wi-Fi Provisioning Setup</h3>
+        <p>Send Wi-Fi credentials to StudyBot:</p>
+        <input type="text" id="wifi-ssid" placeholder="Enter Wi-Fi SSID"><br>
+        <input type="password" id="wifi-pass" placeholder="Enter Wi-Fi Password"><br>
+        <button onclick="sendWiFiCredentials()">Save & Connect Wi-Fi</button>
 
-            <!-- Quick Action CTA -->
-            <div>
-                <button onclick="showPage('connection')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5">
-                    Get Started <i class="fa-solid fa-arrow-right ml-1.5"></i>
-                </button>
-            </div>
-        </div>
-    </header>
+        <h3 style="margin-top: 30px;">Study Timer Settings</h3>
+        <button onclick="triggerTimer(25)">Start 25-Min Pomodoro</button>
+        <br><br>
+        <button class="disconnect" onclick="disconnectBluetooth()">Disconnect Device</button>
+    </div>
 
-    <!-- ================= MAIN CONTAINER ================= -->
-    <main class="flex-grow">
+<script>
+    // BLE Service and Characteristic UUIDs matching your ESP32 code
+    const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
-        <!-- ================= PAGE 1: LANDING / HOME ================= -->
-        <div id="page-home" class="space-y-24 py-12">
-            <!-- Hero Section -->
-            <section class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                <div class="lg:col-span-7 space-y-6">
-                    <div class="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold">
-                        <i class="fa-solid fa-bolt text-amber-400"></i> Powered by Gemini Live API & ESP32 Hardware
-                    </div>
-                    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight">
-                        Meet Your Child's <span class="bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">AI Study Partner</span>.
-                    </h1>
-                    <p class="text-slate-400 text-base sm:text-lg max-w-xl">
-                        A physical interactive robot and smart web ecosystem designed to keep students engaged, provide real-time voice tutoring, and give parents complete transparency.
-                    </p>
-                    <div class="flex flex-wrap gap-4 pt-2">
-                        <button onclick="showPage('connection')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3.5 rounded-2xl font-semibold text-sm transition shadow-xl shadow-indigo-600/30 flex items-center gap-2">
-                            <i class="fa-solid fa-bluetooth"></i> Connect Your Bot Now
-                        </button>
-                        <button onclick="showPage('parent')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-6 py-3.5 rounded-2xl font-semibold text-sm transition flex items-center gap-2">
-                            <i class="fa-solid fa-shield-halved text-emerald-400"></i> Explore Parent Portal
-                        </button>
-                    </div>
-                </div>
+    let bluetoothDevice = null;
+    let rxCharacteristic = null;
 
-                <!-- Hero Graphic Card -->
-                <div class="lg:col-span-5">
-                    <div class="relative bg-gradient-to-b from-slate-900 to-slate-900/60 border border-slate-800 p-8 rounded-3xl shadow-2xl overflow-hidden">
-                        <div class="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
-                        <div class="space-y-6 relative z-10">
-                            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-                                <span class="text-xs font-mono text-slate-400">SYSTEM STATUS: READY</span>
-                                <span class="flex h-2.5 w-2.5 relative">
-                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                                </span>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center gap-3">
-                                    <div class="bg-indigo-500/20 text-indigo-400 p-2.5 rounded-lg"><i class="fa-solid fa-wifi"></i></div>
-                                    <div>
-                                        <h4 class="text-xs font-bold text-slate-200">ESP32 BLE Provisioning</h4>
-                                        <p class="text-[11px] text-slate-400">Secure Wi-Fi configuration via browser.</p>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center gap-3">
-                                    <div class="bg-violet-500/20 text-violet-400 p-2.5 rounded-lg"><i class="fa-solid fa-comments"></i></div>
-                                    <div>
-                                        <h4 class="text-xs font-bold text-slate-200">Hybrid Transcript Sync</h4>
-                                        <p class="text-[11px] text-slate-400">Push web contexts directly to robot voice.</p>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-center gap-3">
-                                    <div class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg"><i class="fa-solid fa-camera"></i></div>
-                                    <div>
-                                        <h4 class="text-xs font-bold text-slate-200">Automated Focus Checks</h4>
-                                        <p class="text-[11px] text-slate-400">AI-driven snapshots every 5 minutes.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Feature Redirection Cards Section -->
-            <section class="max-w-7xl mx-auto px-6 space-y-8">
-                <div class="text-center max-w-2xl mx-auto space-y-2">
-                    <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Explore the Ecosystem</h2>
-                    <p class="text-slate-400 text-sm">Jump straight into any module of the StudyBot control framework.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Card 1 -->
-                    <div onclick="showPage('connection')" class="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/50 p-6 rounded-3xl transition group cursor-pointer space-y-4 shadow-xl">
-                        <div class="bg-indigo-600/10 text-indigo-400 w-12 h-12 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition">
-                            <i class="fa-solid fa-bluetooth-b"></i>
-                        </div>
-                        <h3 class="text-lg font-bold group-hover:text-indigo-400 transition">1. Hardware Connection</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">Pair your ESP32 via Web Bluetooth, scan surrounding Wi-Fi networks, and push credentials instantly.</p>
-                        <span class="inline-flex items-center text-xs font-semibold text-indigo-400">Open Module <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-1 transition"></i></span>
-                    </div>
-
-                    <!-- Card 2 -->
-                    <div onclick="showPage('transcript')" class="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-violet-500/50 p-6 rounded-3xl transition group cursor-pointer space-y-4 shadow-xl">
-                        <div class="bg-violet-600/10 text-violet-400 w-12 h-12 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition">
-                            <i class="fa-solid fa-comments"></i>
-                        </div>
-                        <h3 class="text-lg font-bold group-hover:text-violet-400 transition">2. Transcripts & Chat Sync</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">Review live session transcripts, continue chatting with the fallback text engine, and push context back to your hardware bot.</p>
-                        <span class="inline-flex items-center text-xs font-semibold text-violet-400">Open Module <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-1 transition"></i></span>
-                    </div>
-
-                    <!-- Card 3 -->
-                    <div onclick="showPage('parent')" class="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 p-6 rounded-3xl transition group cursor-pointer space-y-4 shadow-xl">
-                        <div class="bg-emerald-600/10 text-emerald-400 w-12 h-12 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition">
-                            <i class="fa-solid fa-shield-halved"></i>
-                        </div>
-                        <h3 class="text-lg font-bold group-hover:text-emerald-400 transition">3. Parental Dashboard</h3>
-                        <p class="text-xs text-slate-400 leading-relaxed">Monitor study habits with automated AI snapshots every 5 minutes, view live device status, and trigger manual snapshots anytime.</p>
-                        <span class="inline-flex items-center text-xs font-semibold text-emerald-400">Open Module <i class="fa-solid fa-arrow-right ml-1.5 group-hover:translate-x-1 transition"></i></span>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <!-- ================= PAGE 2: CONNECTION PAGE ================= -->
-        <div id="page-connection" class="hidden max-w-5xl mx-auto px-6 py-12 space-y-8">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-6">
-                <div>
-                    <span class="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Module 01</span>
-                    <h2 class="text-2xl font-extrabold tracking-tight mt-1">ESP32 Bluetooth Provisioning</h2>
-                </div>
-                <button onclick="showPage('home')" class="text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl transition">
-                    <i class="fa-solid fa-house mr-1.5"></i> Back to Home
-                </button>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl space-y-6">
-                <div>
-                    <h3 class="text-base font-semibold mb-1 flex items-center gap-2">
-                        <i class="fa-brands fa-bluetooth text-indigo-400"></i> Step 1: Pair with StudyBot BLE Server
-                    </h3>
-                    <p class="text-xs text-slate-400">Ensure your ESP32 is powered on and advertising. Click below to scan and connect directly through your browser's Web Bluetooth API.</p>
-                </div>
-
-                <div class="flex flex-wrap gap-4 items-center pt-2">
-                    <button onclick="connectBLE()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-6 py-3 rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center gap-2">
-                        <i class="fa-brands fa-bluetooth"></i> Scan & Connect Bot
-                    </button>
-                    <div id="bleStatus" class="text-xs font-mono px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400">
-                        STATUS: DISCONNECTED
-                    </div>
-                </div>
-            </div>
-
-            <!-- Wi-Fi Network Configuration Card -->
-            <div id="wifiSetupContainer" class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl space-y-6 opacity-40 pointer-events-none transition-all">
-                <div>
-                    <h3 class="text-base font-semibold mb-1 flex items-center gap-2">
-                        <i class="fa-solid fa-wifi text-emerald-400"></i> Step 2: Configure Local Wi-Fi Network
-                    </h3>
-                    <p class="text-xs text-slate-400">Select your active network SSID scanned from the device and enter your password.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 mb-2">Available SSID Networks</label>
-                        <select id="wifiNetworkList" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
-                            <option value="">Connect via BLE first...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-400 mb-2">Network Password</label>
-                        <input type="password" id="wifiPasswordInput" placeholder="Enter Wi-Fi password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
-                    </div>
-                </div>
-
-                <div class="flex flex-wrap gap-4 pt-2">
-                    <button onclick="scanWifiNetworks()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-5 py-2.5 rounded-xl transition">
-                        <i class="fa-solid fa-rotate mr-2"></i> Refresh Scan
-                    </button>
-                    <button onclick="sendWifiCredentials()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-6 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/30">
-                        <i class="fa-solid fa-paper-plane mr-2"></i> Send Credentials to ESP32
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= PAGE 3: TRANSCRIPT & SYNC PAGE ================= -->
-        <div id="page-transcript" class="hidden max-w-5xl mx-auto px-6 py-12 space-y-8">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-6">
-                <div>
-                    <span class="text-xs font-semibold text-violet-400 uppercase tracking-widest">Module 02</span>
-                    <h2 class="text-2xl font-extrabold tracking-tight mt-1">Live Transcripts & Hybrid Chat</h2>
-                </div>
-                <button onclick="showPage('home')" class="text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl transition">
-                    <i class="fa-solid fa-house mr-1.5"></i> Back to Home
-                </button>
-            </div>
-
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex flex-col h-[65vh]">
-                <div class="flex justify-between items-center pb-4 border-b border-slate-800">
-                    <div>
-                        <h3 class="text-sm font-bold">Active Conversation Log</h3>
-                        <p class="text-[11px] text-slate-400">Sync web contexts directly to your hardware StudyBot.</p>
-                    </div>
-                    <button onclick="startNewChat()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3.5 py-2 rounded-xl transition font-medium">
-                        <i class="fa-solid fa-plus mr-1"></i> Start a New Chat
-                    </button>
-                </div>
-
-                <!-- Chat Stream Window -->
-                <div id="chatHistory" class="flex-grow overflow-y-auto py-4 space-y-4 pr-2">
-                    <div class="flex flex-col space-y-1">
-                        <div class="self-start bg-slate-800/80 border border-slate-700/50 rounded-2xl px-4 py-3 max-w-lg text-xs text-slate-200">
-                            Hello! I am StudyBot. You can speak to me via the live voice API or continue text sessions right here.
-                        </div>
-                        <div class="flex items-center gap-2 ml-2">
-                            <span class="text-[10px] text-slate-500">System Bot • Just now</span>
-                            <button onclick="syncChatToRobot('Hello! I am StudyBot...')" class="text-[10px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded transition font-medium">
-                                <i class="fa-solid fa-robot mr-1"></i> Choose this chat in Robot
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Input Footer Bar -->
-                <div class="pt-4 border-t border-slate-800 flex gap-3">
-                    <input type="text" id="chatInputBox" placeholder="Ask StudyBot a question..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" onkeypress="handleKeyPress(event)">
-                    <button onclick="sendWebChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-xs font-semibold transition shadow-lg shadow-indigo-600/30">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= PAGE 4: PARENT DASHBOARD ================= -->
-        <div id="page-parent" class="hidden max-w-5xl mx-auto px-6 py-12 space-y-8">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-6">
-                <div>
-                    <span class="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Module 03</span>
-                    <h2 class="text-2xl font-extrabold tracking-tight mt-1">Parental Monitoring Portal</h2>
-                </div>
-                <button onclick="showPage('home')" class="text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl transition">
-                    <i class="fa-solid fa-house mr-1.5"></i> Back to Home
-                </button>
-            </div>
-
-            <!-- Status Metrics Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Device Power State</p>
-                        <h3 class="text-base font-bold text-emerald-400 mt-1 flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Online & Connected
-                        </h3>
-                    </div>
-                    <div class="bg-emerald-500/10 p-3.5 rounded-2xl text-emerald-400 border border-emerald-500/20">
-                        <i class="fa-solid fa-power-off text-lg"></i>
-                    </div>
-                </div>
-                <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">AI Focus Assessment</p>
-                        <h3 class="text-base font-bold text-indigo-400 mt-1">Actively Studying</h3>
-                    </div>
-                    <div class="bg-indigo-500/10 p-3.5 rounded-2xl text-indigo-400 border border-indigo-500/20">
-                        <i class="fa-solid fa-eye text-lg"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Configuration & Snapshot Gallery Controls -->
-            <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-xl space-y-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
-                    <div>
-                        <h3 class="text-base font-bold flex items-center gap-2">
-                            <i class="fa-solid fa-camera text-indigo-400"></i> Study Camera Feed & Archive
-                        </h3>
-                        <p class="text-xs text-slate-400">Automatic snapshots capture focus every 5 minutes by default.</p>
-                    </div>
-                    <button onclick="triggerManualSnapshot()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4.5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center gap-2">
-                        <i class="fa-solid fa-camera-retro"></i> Snap Photo Now
-                    </button>
-                </div>
-
-                <!-- Frequency Control Option -->
-                <div class="flex flex-wrap items-center justify-between bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
-                    <div>
-                        <span class="text-xs font-semibold text-slate-200">Automated Checkpoint Frequency</span>
-                        <p class="text-[11px] text-slate-400">Adjust the interval between automatic camera evaluation logs.</p>
-                    </div>
-                    <select id="snapshotInterval" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
-                        <option value="1">Every 1 Minute</option>
-                        <option value="5" selected>Every 5 Minutes (Default)</option>
-                        <option value="10">Every 10 Minutes</option>
-                        <option value="15">Every 15 Minutes</option>
-                    </select>
-                </div>
-
-                <!-- Gallery Grid -->
-                <div>
-                    <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Captured Snapshots Archive</h4>
-                    <div id="snapshotGallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow">
-                            <div class="h-36 bg-slate-900 flex items-center justify-center relative">
-                                <i class="fa-solid fa-image text-3xl text-slate-700"></i>
-                                <span class="absolute top-2.5 right-2.5 bg-emerald-600/90 text-white text-[10px] px-2 py-0.5 rounded-md font-semibold backdrop-blur">Focused</span>
-                            </div>
-                            <div class="p-4">
-                                <p class="text-xs font-bold text-slate-200">Automated Checkpoint</p>
-                                <p class="text-[10px] text-slate-400 mt-0.5">Aug 25, 2026 - 09:05 AM</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- ================= GLOBAL FOOTER ================= -->
-    <footer class="bg-slate-950 border-t border-slate-800/80 py-8 mt-20">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <p>© 2026 StudyBot Ecosystem. All rights reserved.</p>
-            <div class="flex space-x-6">
-                <a href="#home" onclick="showPage('home')" class="hover:text-slate-300 transition">Home Hub</a>
-                <a href="#connection" onclick="showPage('connection')" class="hover:text-slate-300 transition">Connection</a>
-                <a href="#transcript" onclick="showPage('transcript')" class="hover:text-slate-300 transition">Transcripts</a>
-                <a href="#parent" onclick="showPage('parent')" class="hover:text-slate-300 transition">Parent Portal</a>
-            </div>
-        </div>
-    </footer>
-
-    <!-- ================= APPLICATION CONTROLLER SCRIPT ================= -->
-    <script>
-        // Multi-page switcher logic
-        function showPage(pageId) {
-            const pages = ['home', 'connection', 'transcript', 'parent'];
-            pages.forEach(p => {
-                const el = document.getElementById(`page-${p}`);
-                const navBtn = document.getElementById(`nav-btn-${p}`);
-                if (el) el.classList.add('hidden');
-                if (navBtn) {
-                    navBtn.className = "px-4 py-2 rounded-full text-xs font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800";
-                }
+    async function connectBluetooth() {
+        try {
+            document.getElementById("ble-status").innerText = "Status: Scanning...";
+            
+            // Request Bluetooth Device matching StudyBot's BLE name
+            bluetoothDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ name: 'StudyBot_BLE' }],
+                optionalServices: [SERVICE_UUID]
             });
 
-            const targetPage = document.getElementById(`page-${pageId}`);
-            const targetNav = document.getElementById(`nav-btn-${pageId}`);
-            if (targetPage) targetPage.classList.remove('hidden');
-            if (targetNav) {
-                targetNav.className = "px-4 py-2 rounded-full text-xs font-semibold transition-all bg-indigo-600 text-white shadow";
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+            document.getElementById("ble-status").innerText = "Status: Connecting to GATT...";
+            const server = await bluetoothDevice.gatt.connect();
+
+            document.getElementById("ble-status").innerText = "Status: Finding Services...";
+            const service = await server.getPrimaryService(SERVICE_UUID);
+
+            rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+
+            // SUCCESS: Connected! Hide auth card and reveal Parent Dashboard
+            document.getElementById("ble-status").innerText = "Status: Connected";
+            document.getElementById("auth-card").classList.add("hidden");
+            document.getElementById("dashboard-card").classList.remove("hidden");
+
+        } catch (error) {
+            console.error("Bluetooth connection failed: ", error);
+            document.getElementById("ble-status").innerText = "Status: Connection Failed / Cancelled";
+        }
+    }
+
+    async function sendWiFiCredentials() {
+        const ssid = document.getElementById("wifi-ssid").value;
+        const password = document.getElementById("wifi-pass").value;
+
+        if (!ssid || !password) {
+            alert("Please enter both SSID and Password.");
+            return;
         }
 
-        // Web Bluetooth State Variables matching ESP32 firmware
-        let bleDevice = null;
-        let bleServer = null;
-        let rxCharacteristic = null;
-        let txCharacteristic = null;
-
-        const SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-        const RX_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
-        const TX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
-
-        async function connectBLE() {
-            try {
-                const statusDiv = document.getElementById('bleStatus');
-                statusDiv.innerText = "STATUS: SCANNING...";
-                
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: "StudyBot" }],
-                    optionalServices: [SERVICE_UUID]
-                });
-
-                bleServer = await bleDevice.gatt.connect();
-                const service = await bleServer.getPrimaryService(SERVICE_UUID);
-                
-                rxCharacteristic = await service.getCharacteristic(RX_UUID);
-                txCharacteristic = await service.getCharacteristic(TX_UUID);
-
-                await txCharacteristic.startNotifications();
-                txCharacteristic.addEventListener('characteristicvaluechanged', handleBleNotification);
-
-                statusDiv.innerText = "STATUS: CONNECTED";
-                statusDiv.className = "text-xs font-mono px-4 py-2.5 rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400";
-                
-                document.getElementById('wifiSetupContainer').classList.remove('opacity-40', 'pointer-events-none');
-                scanWifiNetworks();
-
-            } catch (error) {
-                console.error("BLE Connection Error:", error);
-                document.getElementById('bleStatus').innerText = "STATUS: FAILED / CANCELLED";
-            }
-        }
-
-        async function scanWifiNetworks() {
-            if (!rxCharacteristic) return;
+        const payload = JSON.stringify({ ssid: ssid, password: password });
+        
+        if (rxCharacteristic) {
             try {
                 const encoder = new TextEncoder();
-                await rxCharacteristic.writeValue(encoder.encode("SCAN_WIFI"));
-                alert("Scan command sent to StudyBot. Networks will populate shortly.");
-            } catch (err) {
-                console.error("Failed to scan Wi-Fi:", err);
+                await rxCharacteristic.writeValue(encoder.encode(payload));
+                alert("Wi-Fi credentials sent to StudyBot successfully!");
+            } catch (error) {
+                console.error("Error sending data: ", error);
+                alert("Failed to send credentials over BLE.");
             }
         }
+    }
 
-        function handleBleNotification(event) {
-            const value = new TextDecoder().decode(event.target.value);
-            if (value.startsWith("NETWORKS:")) {
-                try {
-                    const jsonStr = value.substring(9);
-                    const networks = JSON.parse(jsonStr);
-                    const select = document.getElementById('wifiNetworkList');
-                    select.innerHTML = "";
-                    networks.forEach(net => {
-                        const opt = document.createElement('option');
-                        opt.value = net;
-                        opt.textContent = net;
-                        select.appendChild(opt);
-                    });
-                } catch (e) {
-                    console.error("JSON parse error:", e);
-                }
+    async function triggerTimer(mins) {
+        if (rxCharacteristic) {
+            try {
+                const encoder = new TextEncoder();
+                await rxCharacteristic.writeValue(encoder.encode("TIMER:" + mins));
+                alert("Triggered " + mins + "-minute timer on StudyBot!");
+            } catch (error) {
+                console.error("Error sending timer command: ", error);
             }
         }
+    }
 
-        async function sendWifiCredentials() {
-            if (!rxCharacteristic) return;
-            const ssid = document.getElementById('wifiNetworkList').value;
-            const password = document.getElementById('wifiPasswordInput').value;
-
-            if (!ssid) {
-                alert("Please select a Wi-Fi network.");
-                return;
-            }
-
-            const payload = JSON.stringify({ ssid: ssid, password: password });
-            const encoder = new TextEncoder();
-            await rxCharacteristic.writeValue(encoder.encode(payload));
-            alert("Wi-Fi credentials sent successfully to StudyBot!");
+    function disconnectBluetooth() {
+        if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+            bluetoothDevice.gatt.disconnect();
         }
+        onDisconnected();
+    }
 
-        // Chat Transcript Management
-        function sendWebChatMessage() {
-            const input = document.getElementById('chatInputBox');
-            const text = input.value.trim();
-            if (!text) return;
+    function onDisconnected() {
+        // Lock the dashboard back up and show the gateway card
+        document.getElementById("auth-card").classList.remove("hidden");
+        document.getElementById("dashboard-card").classList.add("hidden");
+        document.getElementById("ble-status").innerText = "Status: Disconnected";
+        bluetoothDevice = null;
+        rxCharacteristic = null;
+    }
+</script>
 
-            appendChatBubble(text, 'user');
-            input.value = "";
-
-            setTimeout(() => {
-                const botReply = "Here is a helpful tip: Break down the core formula before solving the variables step by step.";
-                appendChatBubble(botReply, 'bot');
-            }, 1000);
-        }
-
-        function appendChatBubble(text, sender) {
-            const container = document.getElementById('chatHistory');
-            const wrapper = document.createElement('div');
-            wrapper.className = "flex flex-col space-y-1";
-
-            const isUser = sender === 'user';
-            wrapper.innerHTML = `
-                <div class="${isUser ? 'self-end bg-indigo-600 text-white' : 'self-start bg-slate-800 border border-slate-700/60 text-slate-200'} rounded-2xl px-4 py-3 max-w-lg text-xs shadow">
-                    ${text}
-                </div>
-                <div class="flex items-center gap-2 ${isUser ? 'self-end' : 'ml-2'}">
-                    <span class="text-[10px] text-slate-500">${isUser ? 'You' : 'StudyBot'} • Just now</span>
-                    ${!isUser ? `<button onclick="syncChatToRobot('${text.replace(/'/g, "\\'")}')" class="text-[10px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded transition font-medium"><i class="fa-solid fa-robot mr-1"></i> Choose this chat in Robot</button>` : ''}
-                </div>
-            `;
-            container.appendChild(wrapper);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') sendWebChatMessage();
-        }
-
-        function startNewChat() {
-            document.getElementById('chatHistory').innerHTML = `
-                <div class="flex flex-col space-y-1">
-                    <div class="self-start bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 max-w-lg text-xs text-slate-200">
-                        Started a fresh chat session. How can I assist you today?
-                    </div>
-                </div>
-            `;
-        }
-
-        function syncChatToRobot(snippet) {
-            alert("Context successfully synchronized to StudyBot hardware! The robot will continue from this thread.");
-        }
-
-        // Parent Dashboard Snapshot Management
-        function triggerManualSnapshot() {
-            const gallery = document.getElementById('snapshotGallery');
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            const card = document.createElement('div');
-            card.className = "bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow";
-            card.innerHTML = `
-                <div class="h-36 bg-slate-900 flex items-center justify-center relative">
-                    <i class="fa-solid fa-camera text-3xl text-indigo-400"></i>
-                    <span class="absolute top-2.5 right-2.5 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-md font-semibold">Manual Snapshot</span>
-                </div>
-                <div class="p-4">
-                    <p class="text-xs font-bold text-slate-200">Parent Requested Snapshot</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5">Today - ${now}</p>
-                </div>
-            `;
-            gallery.prepend(card);
-            alert("Manual picture snapshot triggered and safely archived.");
-        }
-    </script>
 </body>
 </html>
