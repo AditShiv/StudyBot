@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyBot - Parent & Control Dashboard</title>
+    <title>StudyBot - Live API & Parent Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +20,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             text-align: center;
             margin-bottom: 20px;
         }
@@ -35,22 +35,13 @@
             margin-top: 10px;
             transition: background 0.3s;
         }
-        button:hover {
-            background-color: #45a049;
-        }
-        button.disconnect {
-            background-color: #f44336;
-        }
-        button.disconnect:hover {
-            background-color: #d32f2f;
-        }
-        .hidden {
-            display: none;
-        }
-        .status-box {
-            font-weight: bold;
-            margin-top: 10px;
-        }
+        button:hover { background-color: #45a049; }
+        button.disconnect { background-color: #f44336; }
+        button.disconnect:hover { background-color: #d32f2f; }
+        button.wake-btn { background-color: #2196F3; font-size: 18px; padding: 15px 30px; }
+        button.wake-btn:hover { background-color: #0b7dda; }
+        .hidden { display: none; }
+        .status-box { font-weight: bold; margin-top: 10px; }
         .status-disconnected { color: #f44336; }
         .status-connected { color: #4CAF50; }
         input, select {
@@ -60,6 +51,21 @@
             border-radius: 5px;
             border: 1px solid #ccc;
         }
+        .chat-box {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: scroll;
+            text-align: left;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .chat-msg { margin-bottom: 10px; }
+        .bot-text { color: #2196F3; }
+        .user-text { color: #4CAF50; }
     </style>
 </head>
 <body>
@@ -67,31 +73,44 @@
     <!-- SECTION 1: BLUETOOTH CONNECTION GATEWAY -->
     <div class="card" id="auth-card">
         <h2>StudyBot Security Gate</h2>
-        <p>You must connect to StudyBot via Bluetooth to unlock the Parent Dashboard.</p>
+        <p>Connect to StudyBot via Bluetooth to unlock the Dashboard.</p>
         <button id="connect-btn" onclick="connectBluetooth()">Connect via Bluetooth</button>
         <p class="status-box status-disconnected" id="ble-status">Status: Disconnected</p>
     </div>
 
-    <!-- SECTION 2: PARENT'S DASHBOARD (LOCKED BY DEFAULT) -->
+    <!-- SECTION 2: DASHBOARD (UNLOCKED AFTER BLE CONNECTION) -->
     <div class="card hidden" id="dashboard-card">
-        <h2>StudyBot Parent's Dashboard</h2>
-        <p class="status-box status-connected">Access Granted: Device Linked Successfully!</p>
+        <h2>StudyBot Master Dashboard</h2>
+        <p class="status-box status-connected">Device Linked Successfully!</p>
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
-        <h3>Wi-Fi Provisioning Setup</h3>
-        <p>Send Wi-Fi credentials to StudyBot:</p>
+        <!-- Wi-Fi Provisioning Setup -->
+        <h3>Wi-Fi Setup</h3>
         <input type="text" id="wifi-ssid" placeholder="Enter Wi-Fi SSID"><br>
         <input type="password" id="wifi-pass" placeholder="Enter Wi-Fi Password"><br>
         <button onclick="sendWiFiCredentials()">Save & Connect Wi-Fi</button>
 
         <h3 style="margin-top: 30px;">Study Timer Settings</h3>
-        <button onclick="triggerTimer(25)">Start 25-Min Pomodoro</button>
-        <br><br>
+        <button onclick="triggerTimer(25)">Start 25-Min Pomodoro Timer</button>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+
+        <!-- SECTION 3: WEB LIVE API CHAT & WAKE WORD SIMULATOR -->
+        <h3>StudyBot Live Voice Interface</h3>
+        <p>Say the wake word or click the button below to activate listening mode:</p>
+        
+        <button class="wake-btn" onclick="triggerWakeWord()">🗣️ "Hey, Buddy"</button>
+        <p id="listen-status" style="font-style: italic; color: #666; margin-top: 10px;">Status: Sleeping (Waiting for wake word)</p>
+
+        <div class="chat-box" id="chat-log">
+            <div class="chat-msg bot-text"><b>StudyBot:</b> System online. Waiting for wake word...</div>
+        </div>
+
+        <br>
         <button class="disconnect" onclick="disconnectBluetooth()">Disconnect Device</button>
     </div>
 
 <script>
-    // BLE Service and Characteristic UUIDs matching your ESP32 code
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
@@ -102,8 +121,6 @@
     async function connectBluetooth() {
         try {
             document.getElementById("ble-status").innerText = "Status: Scanning...";
-            
-            // Request Bluetooth Device matching StudyBot's BLE name
             bluetoothDevice = await navigator.bluetooth.requestDevice({
                 filters: [{ name: 'StudyBot_BLE' }],
                 optionalServices: [SERVICE_UUID]
@@ -113,13 +130,9 @@
 
             document.getElementById("ble-status").innerText = "Status: Connecting to GATT...";
             const server = await bluetoothDevice.gatt.connect();
-
-            document.getElementById("ble-status").innerText = "Status: Finding Services...";
             const service = await server.getPrimaryService(SERVICE_UUID);
-
             rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
 
-            // SUCCESS: Connected! Hide auth card and reveal Parent Dashboard
             document.getElementById("ble-status").innerText = "Status: Connected";
             document.getElementById("auth-card").classList.add("hidden");
             document.getElementById("dashboard-card").classList.remove("hidden");
@@ -133,21 +146,17 @@
     async function sendWiFiCredentials() {
         const ssid = document.getElementById("wifi-ssid").value;
         const password = document.getElementById("wifi-pass").value;
-
         if (!ssid || !password) {
             alert("Please enter both SSID and Password.");
             return;
         }
-
         const payload = JSON.stringify({ ssid: ssid, password: password });
-        
         if (rxCharacteristic) {
             try {
                 const encoder = new TextEncoder();
                 await rxCharacteristic.writeValue(encoder.encode(payload));
                 alert("Wi-Fi credentials sent to StudyBot successfully!");
             } catch (error) {
-                console.error("Error sending data: ", error);
                 alert("Failed to send credentials over BLE.");
             }
         }
@@ -158,11 +167,35 @@
             try {
                 const encoder = new TextEncoder();
                 await rxCharacteristic.writeValue(encoder.encode("TIMER:" + mins));
-                alert("Triggered " + mins + "-minute timer on StudyBot!");
+                alert("Triggered " + mins + "-minute timer!");
             } catch (error) {
                 console.error("Error sending timer command: ", error);
             }
         }
+    }
+
+    // Wake Word simulation logic for website testing
+    function triggerWakeWord() {
+        const statusEl = document.getElementById("listen-status");
+        const chatLog = document.getElementById("chat-log");
+
+        statusEl.innerText = "Status: Listening... Speak now!";
+        statusEl.style.color = "#4CAF50";
+
+        chatLog.innerHTML += `<div class="chat-msg user-text"><b>You:</b> Hey, Buddy!</div>`;
+        chatLog.scrollTop = chatLog.scrollHeight;
+
+        // Simulate AI response after hearing wake word
+        setTimeout(() => {
+            statusEl.innerText = "Status: StudyBot is responding...";
+            chatLog.innerHTML += `<div class="chat-msg bot-text"><b>StudyBot:</b> Hey there! I'm listening. What are we working on in your studies right now?</div>`;
+            chatLog.scrollTop = chatLog.scrollHeight;
+            
+            setTimeout(() => {
+                statusEl.innerText = "Status: Sleeping (Waiting for wake word)";
+                statusEl.style.color = "#666";
+            }, 2000);
+        }, 1500);
     }
 
     function disconnectBluetooth() {
@@ -173,7 +206,6 @@
     }
 
     function onDisconnected() {
-        // Lock the dashboard back up and show the gateway card
         document.getElementById("auth-card").classList.remove("hidden");
         document.getElementById("dashboard-card").classList.add("hidden");
         document.getElementById("ble-status").innerText = "Status: Disconnected";
