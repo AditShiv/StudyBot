@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyBot - Live Chat Dashboard</title>
+    <title>StudyBot - Gemini Live API Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,10 +40,10 @@
         button.disconnect:hover { background-color: #d32f2f; }
         button.mic-btn {
             background-color: #ff5722;
-            font-size: 20px;
-            padding: 20px 30px;
+            font-size: 18px;
+            padding: 15px 25px;
             border-radius: 50px;
-            margin-top: 20px;
+            margin-top: 15px;
             box-shadow: 0 4px 15px rgba(255,87,34,0.4);
         }
         button.mic-btn.listening {
@@ -79,8 +79,8 @@
             font-size: 14px;
         }
         .chat-msg { margin-bottom: 10px; }
-        .bot-text { color: #2196F3; }
-        .user-text { color: #4CAF50; }
+        .bot-text { color: #1a73e8; }
+        .user-text { color: #137333; }
     </style>
 </head>
 <body>
@@ -88,37 +88,40 @@
     <!-- SECTION 1: BLUETOOTH SECURITY GATE -->
     <div class="card" id="auth-card">
         <h2>StudyBot Security Gate</h2>
-        <p>Connect to StudyBot via Bluetooth to unlock the Wi-Fi and Live Chat interface.</p>
+        <p>Connect to StudyBot via Bluetooth to unlock the Wi-Fi and Gemini Live API interface.</p>
         <button id="connect-btn" onclick="connectBluetooth()">Connect via Bluetooth</button>
         <p class="status-box status-disconnected" id="ble-status">Status: Disconnected</p>
     </div>
 
-    <!-- SECTION 2: WIFI & LIVE CHAT DASHBOARD (LOCKED UNTIL BLE CONNECTED) -->
+    <!-- SECTION 2: WIFI & GEMINI LIVE DASHBOARD (LOCKED UNTIL BLE CONNECTED) -->
     <div class="card hidden" id="dashboard-card">
-        <h2>StudyBot Live Control Panel</h2>
+        <h2>StudyBot Master Dashboard</h2>
         <p class="status-box status-connected">Device Linked via Bluetooth Successfully!</p>
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
-        <!-- Wi-Fi Configuration -->
+        <!-- Wi-Fi Provisioning Configuration -->
         <h3>Step 1: Connect StudyBot to Wi-Fi</h3>
         <input type="text" id="wifi-ssid" placeholder="Enter Wi-Fi SSID"><br>
         <input type="password" id="wifi-pass" placeholder="Enter Wi-Fi Password"><br>
         <button onclick="sendWiFiCredentials()">Save & Connect Wi-Fi</button>
 
+        <h3 style="margin-top: 20px;">Study Timer Settings</h3>
+        <button onclick="triggerTimer(25)">Trigger 25-Min Pomodoro Timer</button>
+
         <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
 
-        <!-- SECTION 3: WAKE WORD & LIVE API MIC INTERFACE -->
-        <h3>Step 2: Live AI Voice Session</h3>
-        <p>Once Wi-Fi is connected, say <b>"Hey, Buddy"</b> or click the microphone button below to open the mic and talk to StudyBot:</p>
+        <!-- SECTION 3: GEMINI LIVE API WAKE WORD & AUDIO STREAM CHAT -->
+        <h3>Step 2: Gemini Live API Voice Session</h3>
+        <p>Say <b>"Hey, Buddy"</b> or click the mic button below to open the audio stream with StudyBot's SEL Persona:</p>
         
         <button class="mic-btn" id="mic-button" onclick="toggleListening()">🎙️ "Hey, Buddy"</button>
-        <p id="mic-status" style="font-style: italic; color: #666; margin-top: 12px;">Microphone is OFF (Waiting for wake word)</p>
+        <p id="mic-status" style="font-style: italic; color: #666; margin-top: 10px;">Status: Sleeping (Waiting for wake word)</p>
 
         <div class="chat-box" id="chat-log">
-            <div class="chat-msg bot-text"><b>StudyBot:</b> System initialized. Connect to Wi-Fi and say "Hey, Buddy" to start talking.</div>
+            <div class="chat-msg bot-text"><b>StudyBot (Live API):</b> System online. Initialized with Emotional Support SEL Persona. Say "Hey, Buddy" to begin.</div>
         </div>
 
-        <br><br>
+        <br>
         <button class="disconnect" onclick="disconnectBluetooth()">Disconnect Device</button>
     </div>
 
@@ -168,14 +171,26 @@
             try {
                 const encoder = new TextEncoder();
                 await rxCharacteristic.writeValue(encoder.encode(payload));
-                alert("Wi-Fi credentials sent! StudyBot is connecting to the network...");
+                alert("Wi-Fi credentials sent! StudyBot is connecting to Gemini Live API...");
             } catch (error) {
                 alert("Failed to send credentials over BLE.");
             }
         }
     }
 
-    // Wake word activation simulation for the live audio stream
+    async function triggerTimer(mins) {
+        if (rxCharacteristic) {
+            try {
+                const encoder = new TextEncoder();
+                await rxCharacteristic.writeValue(encoder.encode("TIMER:" + mins));
+                alert("Triggered " + mins + "-minute timer on StudyBot!");
+            } catch (error) {
+                console.error("Error sending timer command: ", error);
+            }
+        }
+    }
+
+    // Wake word activation simulation mirroring the ESP32 Live API WebSocket behavior
     function toggleListening() {
         const micBtn = document.getElementById("mic-button");
         const statusEl = document.getElementById("mic-status");
@@ -184,24 +199,24 @@
         if (!isListening) {
             isListening = true;
             micBtn.classList.add("listening");
-            micBtn.innerHTML = "🔴 Listening... (Speak)";
-            statusEl.innerText = "Status: Microphone OPEN. Connected to Live API stream.";
-            statusEl.style.color = "#4CAF50";
+            micBtn.innerHTML = "🔴 Listening to Live Stream...";
+            statusEl.innerText = "Status: Audio Bidirectional Stream Open.";
+            statusEl.style.color = "#137333";
 
             chatLog.innerHTML += `<div class="chat-msg user-text"><b>You:</b> Hey, Buddy!</div>`;
             chatLog.scrollTop = chatLog.scrollHeight;
 
-            // Simulate StudyBot responding back through the live stream audio
+            // Simulate Gemini Live API response conforming to the system prompt setup
             setTimeout(() => {
-                chatLog.innerHTML += `<div class="chat-msg bot-text"><b>StudyBot:</b> Hey there! I'm listening. What are we studying right now?</div>`;
+                chatLog.innerHTML += `<div class="chat-msg bot-text"><b>StudyBot:</b> Hello there! I am listening. Take a deep breath—what specific concept or homework problem are we breaking down together today?</div>`;
                 chatLog.scrollTop = chatLog.scrollHeight;
-            }, 1200);
+            }, 1000);
 
         } else {
             isListening = false;
             micBtn.classList.remove("listening");
             micBtn.innerHTML = '🎙️ "Hey, Buddy"';
-            statusEl.innerText = "Status: Microphone Closed (Sleeping)";
+            statusEl.innerText = "Status: Sleeping (Waiting for wake word)";
             statusEl.style.color = "#666";
         }
     }
@@ -223,4 +238,4 @@
 </script>
 
 </body>
-</html>    
+</html>
