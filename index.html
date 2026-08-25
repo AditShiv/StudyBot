@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyBot - Gemini Live API Dashboard</title>
+    <title>StudyBot - Live Voice & Chat Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -39,15 +39,15 @@
         button.disconnect { background-color: #f44336; }
         button.disconnect:hover { background-color: #d32f2f; }
         button.mic-btn {
-            background-color: #ff5722;
+            background-color: #2196F3;
             font-size: 18px;
             padding: 15px 25px;
             border-radius: 50px;
             margin-top: 15px;
-            box-shadow: 0 4px 15px rgba(255,87,34,0.4);
+            box-shadow: 0 4px 15px rgba(33,150,243,0.4);
         }
-        button.mic-btn.listening {
-            background-color: #4CAF50;
+        button.mic-btn.active {
+            background-color: #f44336;
             animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
@@ -88,37 +88,34 @@
     <!-- SECTION 1: BLUETOOTH SECURITY GATE -->
     <div class="card" id="auth-card">
         <h2>StudyBot Security Gate</h2>
-        <p>Connect to StudyBot via Bluetooth to unlock the Wi-Fi and Gemini Live API interface.</p>
+        <p>Connect to StudyBot via Bluetooth to unlock setup.</p>
         <button id="connect-btn" onclick="connectBluetooth()">Connect via Bluetooth</button>
         <p class="status-box status-disconnected" id="ble-status">Status: Disconnected</p>
     </div>
 
-    <!-- SECTION 2: WIFI & GEMINI LIVE DASHBOARD (LOCKED UNTIL BLE CONNECTED) -->
-    <div class="card hidden" id="dashboard-card">
-        <h2>StudyBot Master Dashboard</h2>
-        <p class="status-box status-connected">Device Linked via Bluetooth Successfully!</p>
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-        
-        <!-- Wi-Fi Provisioning Configuration -->
-        <h3>Step 1: Connect StudyBot to Wi-Fi</h3>
+    <!-- SECTION 2: WIFI SETUP DASHBOARD -->
+    <div class="card" id="wifi-card">
+        <h2>StudyBot Wi-Fi Configuration</h2>
+        <p class="status-box status-disconnected" id="wifi-status">Wi-Fi Status: Not Connected</p>
         <input type="text" id="wifi-ssid" placeholder="Enter Wi-Fi SSID"><br>
         <input type="password" id="wifi-pass" placeholder="Enter Wi-Fi Password"><br>
         <button onclick="sendWiFiCredentials()">Save & Connect Wi-Fi</button>
+        <br><br>
+        <button class="disconnect" onclick="disconnectBluetooth()">Disconnect Bluetooth</button>
+    </div>
 
-        <h3 style="margin-top: 20px;">Study Timer Settings</h3>
-        <button onclick="triggerTimer(25)">Trigger 25-Min Pomodoro Timer</button>
-
-        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
-
-        <!-- SECTION 3: GEMINI LIVE API WAKE WORD & AUDIO STREAM CHAT -->
-        <h3>Step 2: Gemini Live API Voice Session</h3>
-        <p>Say <b>"Hey, Buddy"</b> or click the mic button below to open the audio stream with StudyBot's SEL Persona:</p>
+    <!-- SECTION 3: LIVE CHAT & MICROPHONE PAGE (HIDDEN UNTIL WIFI CONNECTS) -->
+    <div class="card hidden" id="chat-card">
+        <h2>StudyBot Live Voice Chat</h2>
+        <p class="status-box status-connected">Connected to Wi-Fi & Live API Stream!</p>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
         
-        <button class="mic-btn" id="mic-button" onclick="toggleListening()">🎙️ "Hey, Buddy"</button>
-        <p id="mic-status" style="font-style: italic; color: #666; margin-top: 10px;">Status: Sleeping (Waiting for wake word)</p>
+        <p>Click below to grant microphone access and start your voice session:</p>
+        <button class="mic-btn" id="mic-button" onclick="toggleMicrophone()">🎙️ Start Voice Stream</button>
+        <p id="mic-status" style="font-style: italic; color: #666; margin-top: 10px;">Microphone is OFF</p>
 
         <div class="chat-box" id="chat-log">
-            <div class="chat-msg bot-text"><b>StudyBot (Live API):</b> System online. Initialized with Emotional Support SEL Persona. Say "Hey, Buddy" to begin.</div>
+            <div class="chat-msg bot-text"><b>StudyBot:</b> Hello! I am online with your SEL coaching persona. Speak into your microphone to chat.</div>
         </div>
 
         <br>
@@ -132,7 +129,9 @@
 
     let bluetoothDevice = null;
     let rxCharacteristic = null;
-    let isListening = false;
+    let txCharacteristic = null;
+    let audioStream = null;
+    let isMicActive = false;
 
     async function connectBluetooth() {
         try {
@@ -147,11 +146,16 @@
             document.getElementById("ble-status").innerText = "Status: Connecting to GATT...";
             const server = await bluetoothDevice.gatt.connect();
             const service = await server.getPrimaryService(SERVICE_UUID);
+            
             rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+            txCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_TX);
+            
+            // Listen for notifications from ESP32 (like Wi-Fi connection status updates)
+            await txCharacteristic.startNotifications();
+            txCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
 
-            document.getElementById("ble-status").innerText = "Status: Connected";
+            document.getElementById("ble-status").innerText = "Status: Connected via Bluetooth";
             document.getElementById("auth-card").classList.add("hidden");
-            document.getElementById("dashboard-card").classList.remove("hidden");
 
         } catch (error) {
             console.error("Bluetooth connection failed: ", error);
@@ -171,57 +175,77 @@
             try {
                 const encoder = new TextEncoder();
                 await rxCharacteristic.writeValue(encoder.encode(payload));
-                alert("Wi-Fi credentials sent! StudyBot is connecting to Gemini Live API...");
+                document.getElementById("wifi-status").innerText = "Wi-Fi Status: Connecting...";
             } catch (error) {
                 alert("Failed to send credentials over BLE.");
             }
+        } else {
+            alert("Please connect via Bluetooth first!");
         }
     }
 
-    async function triggerTimer(mins) {
-        if (rxCharacteristic) {
-            try {
-                const encoder = new TextEncoder();
-                await rxCharacteristic.writeValue(encoder.encode("TIMER:" + mins));
-                alert("Triggered " + mins + "-minute timer on StudyBot!");
-            } catch (error) {
-                console.error("Error sending timer command: ", error);
-            }
+    // Handles incoming BLE notifications from the ESP32
+    function handleNotifications(event) {
+        const value = new TextDecoder().decode(event.target.value);
+        console.log("BLE Notification received: ", value);
+
+        if (value.includes("STATUS:CONNECTED")) {
+            // SUCCESS: Redirect from Wi-Fi page to the Live Chat & Microphone page!
+            document.getElementById("wifi-card").classList.add("hidden");
+            document.getElementById("chat-card").classList.remove("hidden");
+        } else if (value.includes("STATUS:FAILED")) {
+            document.getElementById("wifi-status").innerText = "Wi-Fi Status: Connection Failed. Check credentials.";
+            document.getElementById("wifi-status").style.color = "#f44336";
         }
     }
 
-    // Wake word activation simulation mirroring the ESP32 Live API WebSocket behavior
-    function toggleListening() {
+    // Real browser microphone access for live streaming simulation
+    async function toggleMicrophone() {
         const micBtn = document.getElementById("mic-button");
         const statusEl = document.getElementById("mic-status");
         const chatLog = document.getElementById("chat-log");
 
-        if (!isListening) {
-            isListening = true;
-            micBtn.classList.add("listening");
-            micBtn.innerHTML = "🔴 Listening to Live Stream...";
-            statusEl.innerText = "Status: Audio Bidirectional Stream Open.";
-            statusEl.style.color = "#137333";
+        if (!isMicActive) {
+            try {
+                // Request live microphone access from the browser
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                isMicActive = true;
+                
+                micBtn.classList.add("active");
+                micBtn.innerHTML = "🔴 Stop Voice Stream";
+                statusEl.innerText = "Status: Microphone LIVE & Streaming Audio.";
+                statusEl.style.color = "#4CAF50";
 
-            chatLog.innerHTML += `<div class="chat-msg user-text"><b>You:</b> Hey, Buddy!</div>`;
-            chatLog.scrollTop = chatLog.scrollHeight;
-
-            // Simulate Gemini Live API response conforming to the system prompt setup
-            setTimeout(() => {
-                chatLog.innerHTML += `<div class="chat-msg bot-text"><b>StudyBot:</b> Hello there! I am listening. Take a deep breath—what specific concept or homework problem are we breaking down together today?</div>`;
+                chatLog.innerHTML += `<div class="chat-msg user-text"><b>You (Voice):</b> [Microphone audio stream active...]</div>`;
                 chatLog.scrollTop = chatLog.scrollHeight;
-            }, 1000);
 
+                // Simulate incoming live audio response from Gemini API
+                setTimeout(() => {
+                    chatLog.innerHTML += `<div class="chat-msg bot-text"><b>StudyBot:</b> I hear you loud and clear. Let's work through this step by step. What subject are we tackling?</div>`;
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }, 1500);
+
+            } catch (err) {
+                console.error("Microphone permission denied:", err);
+                alert("Microphone access was denied or is not supported by your browser.");
+            }
         } else {
-            isListening = false;
-            micBtn.classList.remove("listening");
-            micBtn.innerHTML = '🎙️ "Hey, Buddy"';
-            statusEl.innerText = "Status: Sleeping (Waiting for wake word)";
+            // Stop the microphone stream tracks
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+            }
+            isMicActive = false;
+            micBtn.classList.remove("active");
+            micBtn.innerHTML = "🎙️ Start Voice Stream";
+            statusEl.innerText = "Status: Microphone Closed";
             statusEl.style.color = "#666";
         }
     }
 
     function disconnectBluetooth() {
+        if (isMicActive && audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+        }
         if (bluetoothDevice && bluetoothDevice.gatt.connected) {
             bluetoothDevice.gatt.disconnect();
         }
@@ -230,10 +254,12 @@
 
     function onDisconnected() {
         document.getElementById("auth-card").classList.remove("hidden");
-        document.getElementById("dashboard-card").classList.add("hidden");
+        document.getElementById("wifi-card").classList.remove("hidden");
+        document.getElementById("chat-card").classList.add("hidden");
         document.getElementById("ble-status").innerText = "Status: Disconnected";
         bluetoothDevice = null;
         rxCharacteristic = null;
+        txCharacteristic = null;
     }
 </script>
 
